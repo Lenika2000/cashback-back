@@ -39,4 +39,12 @@ class CashbackClientController(
         cashbackRepository.save(cashback)
         return CashbackResponse("Ваша заявка на получение кэшбека была создана. Ожидайте", cashback.id)
     }
+
+    @GetMapping("getAll/{clientId}")
+    fun getClientCashbacks(@PathVariable clientId: Long): List<Cashback> {
+        val client = clientRepository.findById(clientId).orElseThrow {
+            EntityNotFoundException("Клиент с id $clientId не найден!")
+        }
+        return cashbackRepository.findCashbackByClient(client);
+    }
 }

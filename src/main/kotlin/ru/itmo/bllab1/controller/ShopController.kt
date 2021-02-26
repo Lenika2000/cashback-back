@@ -28,6 +28,6 @@ class ShopController(
     fun registerShop(@RequestBody payload: RegisterShopRequest): MessageIdResponse {
         val shop = Shop(0, payload.name)
         shopRepository.save(shop)
-        return MessageIdResponse("Пользователь успешно зарегистрирован", shop.id)
+        return MessageIdResponse("Магазин успешно зарегистрирован", shop.id)
     }
 }

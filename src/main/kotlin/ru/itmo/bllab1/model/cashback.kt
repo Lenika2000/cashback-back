@@ -1,3 +1,5 @@
+package ru.itmo.bllab1.model
+
 import java.time.LocalDateTime
 import javax.persistence.*
 
@@ -27,4 +29,38 @@ class Cashback(
         var status: CashbackStatus = CashbackStatus.NEW,
         @Column(name = "cashback_sum")
         var cashbackSum: Double = 0.0
+)
+
+
+data class CashbackData (
+        val id: Long,
+        val startDate: LocalDateTime,
+        val clientFirstName: String,
+        val clientLastName: String,
+        val shopName: String,
+        var isPaid: Boolean,
+        var isOrderCompleted: Boolean,
+        var confirmPayment: Boolean,
+        var status: CashbackStatus,
+        var cashbackSum: Double,
+)
+
+data class CashbackDataForShop (
+        val id: Long,
+        val startDate: LocalDateTime,
+        val clientFirstName: String,
+        val clientLastName: String,
+        var isPaid: Boolean,
+        var isOrderCompleted: Boolean,
+        var confirmPayment: Boolean,
+        var status: CashbackStatus,
+        var cashbackSum: Double,
+)
+
+data class CashbackDataForClient (
+        val id: Long,
+        val startDate: LocalDateTime,
+        val shopName: String,
+        var status: CashbackStatus,
+        var cashbackSum: Double,
 )

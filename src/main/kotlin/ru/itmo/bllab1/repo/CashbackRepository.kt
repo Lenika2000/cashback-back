@@ -1,9 +1,9 @@
 package ru.itmo.bllab1.repo
 
-import Cashback
-import Client
-import Shop
 import org.springframework.data.repository.CrudRepository
+import ru.itmo.bllab1.model.Cashback
+import ru.itmo.bllab1.model.Client
+import ru.itmo.bllab1.model.Shop
 import java.time.LocalDateTime
 
 interface CashbackRepository : CrudRepository<Cashback, Long> {

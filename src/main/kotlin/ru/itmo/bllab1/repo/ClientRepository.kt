@@ -1,7 +1,6 @@
 package ru.itmo.bllab1.repo
 
-import Client
 import org.springframework.data.repository.CrudRepository
-import javax.persistence.*
+import ru.itmo.bllab1.model.Client
 
 interface ClientRepository : CrudRepository<Client, Long>

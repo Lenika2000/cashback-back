@@ -1,9 +1,8 @@
 package ru.itmo.bllab1.repo
 
-import Shop
 import org.springframework.data.repository.CrudRepository
+import ru.itmo.bllab1.model.Shop
 import java.util.*
-import javax.persistence.*
 
 interface ShopRepository : CrudRepository<Shop, Long> {
         fun findShopByName(name: String): Optional<Shop>

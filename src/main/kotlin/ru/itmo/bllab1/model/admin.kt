@@ -1,8 +1,9 @@
 package ru.itmo.bllab1.model
+
 import javax.persistence.*
 
 @Entity
-class Client(
+class Admin(
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY)
         var id: Long = 0,
@@ -10,15 +11,6 @@ class Client(
         var firstName: String = "",
         @Column(name = "last_name")
         var lastName: String = "",
-        var balance: Double = 0.0,
-        @OneToOne(mappedBy = "client")
+        @OneToOne(mappedBy = "admin")
         var eUser: EUser = EUser()
-)
-
-
-data class ClientData(
-        val id: Long,
-        val firstName: String,
-        val lastName: String,
-        val balance: Number
 )

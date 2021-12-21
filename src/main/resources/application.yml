@@ -1,0 +1,12 @@
+spring:
+  profiles:
+    active: local
+  kafka:
+    consumer:
+      properties:
+        spring:
+          json:
+            trusted:
+              packages=*:
+server:
+  port: 8081

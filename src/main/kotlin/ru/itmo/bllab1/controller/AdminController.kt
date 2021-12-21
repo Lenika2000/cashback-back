@@ -51,7 +51,7 @@ class AdminController(
     @GetMapping("")
     @PreAuthorize("hasAnyRole('ADMIN')")
     fun getCashback(): Iterable<CashbackData> {
-        return cashbackRepository.findAll().map{cashback: Cashback -> CashbackController.mapCashbackData(cashback)};
+        return cashbackRepository.findAll().filter { cashback: Cashback -> cashback.shop.name != "" && cashback.client.firstName != ""  }.map{cashback: Cashback -> CashbackController.mapCashbackData(cashback)};
     }
 
     @PostMapping("/process")

@@ -1,5 +1,6 @@
 package ru.itmo.bllab1.controller
 
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.authentication.AuthenticationManager
@@ -18,6 +19,7 @@ import javax.persistence.EntityNotFoundException
 
 data class JwtResponse(
         val login: String,
+        val id: Long,
         val roles: Collection<String>,
         val accessToken: String,
 )
@@ -29,20 +31,18 @@ class UserController(
         private val authenticationManager: AuthenticationManager,
         private val jwtUtils: JwtUtils,
         private val encoder: PasswordEncoder,
-        private val userService: UserService,
         private val userRepository: UserRepository,
         private val roleRepository: RoleRepository,
         private val clientRepository: ClientRepository,
         private val shopRepository: ShopRepository,
-        private val adminRepository: AdminRepository
 ) {
 
     companion object {
         fun mapClientData(client: Client): ClientData =
-                ClientData(client.id, client.firstName, client.lastName, client.balance)
+                ClientData(client.id, client.firstName, client.lastName, client.eUser.login, client.balance)
 
         fun mapShopData(shop: Shop): ShopData =
-                ShopData(shop.id, shop.name)
+                ShopData(shop.id, shop.name, shop.eUser.login)
     }
 
     @PostMapping("/signin")
@@ -55,8 +55,10 @@ class UserController(
         val userDetails = authentication.principal as UserDetailsImpl
         val user = userRepository.findByLogin(userDetails.username)
                 .orElseThrow { EntityNotFoundException("Пользователь не найден") }
+        val id = if (user.client !== null) user.client!!.id else if (user.shop !== null) user.shop!!.id else user.admin!!.id;
         return ResponseEntity.ok(JwtResponse(
                 user.login,
+                id,
                 userDetails.authorities.stream()
                         .map { v -> v.authority }
                         .collect(Collectors.toList()),
@@ -64,30 +66,10 @@ class UserController(
         ))
     }
 
-    @GetMapping("/client/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','CLIENT')")
-    fun getClientData(@PathVariable id: Long): ClientData {
-        userService.checkClientAuthority(id)
-        val client = clientRepository.findById(id).orElseThrow {
-            EntityNotFoundException("Клиент с id $id не найден!")
-        }
-        return mapClientData(client)
-    }
-
     @GetMapping("/clients")
     @PreAuthorize("hasAnyRole('ADMIN')")
     fun getClientsData(): Iterable<ClientData> = clientRepository.findAll()
             .map { client: Client -> mapClientData(client) }
-
-    @GetMapping("/shop/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','SHOP')")
-    fun getShopData(@PathVariable id: Long): ShopData {
-        userService.checkShopAuthority(id)
-        val shop = shopRepository.findById(id).orElseThrow {
-            EntityNotFoundException("Магазин с id $id не найден!")
-        }
-        return mapShopData(shop)
-    }
 
     @GetMapping("/shops")
     @PreAuthorize("hasAnyRole('ADMIN')")
@@ -95,49 +77,51 @@ class UserController(
             .map { shop: Shop -> mapShopData(shop) }
 
     @PostMapping("/client/register")
-    fun registerClient(@RequestBody payload: RegisterUserRequest): MessageIdResponse {
-        if (userRepository.findByLogin(payload.login).isPresent)
-            throw IllegalStateException("Пользователь с таким логином уже зарегистрирован")
-        val client = Client(0, payload.firstName, payload.lastName)
-        val user = EUser(
-                0, payload.login, encoder.encode(payload.password), client, null, null,
-                setOf(roleRepository.findRoleByName(ERole.ROLE_CLIENT).get())
-        )
-        client.eUser = user
-        userRepository.save(user)
-        clientRepository.save(client)
-        return MessageIdResponse("Регистрация клиента прошла успешно", client.id)
+    fun registerClient(@RequestBody payload: RegisterUserRequest): ResponseEntity<MessageIdResponse> {
+        if (userRepository.findByLogin(payload.login).isPresent && userRepository.findByLogin(payload.login).get().client != null) {
+            if (userRepository.findByLogin(payload.login).get().registrationFromWebSite)
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(MessageIdResponse("Клиент с таким логином уже зарегистрирован", 0))
+            val user = userRepository.findByLogin(payload.login).get();
+            user.client!!.firstName = payload.firstName;
+            user.client!!.lastName = payload.lastName;
+            user.registrationFromWebSite = true;
+            user.password = encoder.encode(payload.password);
+            userRepository.save(user);
+            return ResponseEntity.ok().body(MessageIdResponse("Регистрация клиента прошла успешно", user.client!!.id))
+        } else {
+            val client = Client(0, payload.firstName, payload.lastName)
+            val user = EUser(
+                    0, payload.login, encoder.encode(payload.password), client, null, null,
+                    setOf(roleRepository.findRoleByName(ERole.ROLE_CLIENT).get()), true
+            )
+            client.eUser = user
+            userRepository.save(user)
+            clientRepository.save(client)
+            return ResponseEntity.ok().body(MessageIdResponse("Регистрация клиента прошла успешно", client.id))
+        }
     }
 
     @PostMapping("/shop/register")
-    @PreAuthorize("hasAnyRole('ADMIN')")
-    fun registerShop(@RequestBody payload: RegisterShopRequest): MessageIdResponse {
-        if (userRepository.findByLogin(payload.login).isPresent)
-            throw IllegalStateException("Пользователь с таким логином уже зарегистрирован")
-        val shop = Shop(0, payload.name)
-        val user = EUser(
-                0, payload.login, encoder.encode(payload.password), null, shop, null,
-                setOf(roleRepository.findRoleByName(ERole.ROLE_SHOP).get())
-        )
-        shop.eUser = user
-        userRepository.save(user)
-        shopRepository.save(shop)
-        return MessageIdResponse("Регистрация магазина прошла успешно", shop.id)
-    }
-
-    @PostMapping("/admin/register")
-    @PreAuthorize("hasAnyRole('ADMIN')")
-    fun registerAdmin(@RequestBody payload: RegisterUserRequest): MessageIdResponse {
-        if (userRepository.findByLogin(payload.login).isPresent)
-            throw IllegalStateException("Пользователь с таким логином уже зарегистрирован")
-        val admin = Admin(0, payload.firstName, payload.lastName)
-        val user = EUser(
-                0, payload.login, encoder.encode(payload.password), null, null, admin,
-                setOf(roleRepository.findRoleByName(ERole.ROLE_ADMIN).get())
-        )
-        admin.eUser = user
-        userRepository.save(user)
-        adminRepository.save(admin)
-        return MessageIdResponse("Регистрация администратора прошла успешно", admin.id)
+    fun registerShop(@RequestBody payload: RegisterShopRequest): ResponseEntity<MessageIdResponse> {
+        if (userRepository.findByLogin(payload.login).isPresent && userRepository.findByLogin(payload.login).get().shop != null) {
+            if (userRepository.findByLogin(payload.login).get().registrationFromWebSite)
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(MessageIdResponse("Магазин с таким логином уже зарегистрирован", 0))
+            val user = userRepository.findByLogin(payload.login).get();
+            user.shop!!.name = payload.name;
+            user.registrationFromWebSite = true;
+            user.password = encoder.encode(payload.password);
+            userRepository.save(user);
+            return ResponseEntity.ok().body(MessageIdResponse("Регистрация магазина прошла успешно", user.shop!!.id))
+        } else {
+            val shop = Shop(0, payload.name)
+            val user = EUser(
+                    0, payload.login, encoder.encode(payload.password), null, shop, null,
+                    setOf(roleRepository.findRoleByName(ERole.ROLE_SHOP).get()), true
+            )
+            shop.eUser = user
+            userRepository.save(user)
+            shopRepository.save(shop)
+            return ResponseEntity.ok().body(MessageIdResponse("Регистрация магазина прошла успешно", shop.id))
+        }
     }
 }

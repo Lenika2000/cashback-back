@@ -3,17 +3,18 @@ package ru.itmo.bllab1.controller
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 import ru.itmo.bllab1.model.Cashback
-import ru.itmo.bllab1.repo.AdminRepository
+import ru.itmo.bllab1.model.CashbackData
 import ru.itmo.bllab1.repo.CashbackRepository
 import ru.itmo.bllab1.repo.ClientRepository
 import ru.itmo.bllab1.repo.ShopRepository
 import ru.itmo.bllab1.service.CashbackService
-import ru.itmo.bllab1.service.UserService
 import javax.persistence.EntityNotFoundException
 
 data class CashbackRequestPayload(
         val clientId: Long,
         val shopName: String,
+        val productName: String,
+        val productPrice: Double
 )
 
 data class CashbackResponse(
@@ -22,16 +23,16 @@ data class CashbackResponse(
 )
 
 @CrossOrigin(origins = ["*"], maxAge = 3600)
-@RequestMapping("/api/admin/cashback/")
+@RequestMapping("/api/admin/cashback")
 @RestController
-class CashbackAdminController(
-        private val cashbackRepository: CashbackRepository,
+class AdminController(
+        private val cashbackService: CashbackService,
         private val clientRepository: ClientRepository,
         private val shopRepository: ShopRepository,
-        private val cashbackService: CashbackService,
+        private val cashbackRepository: CashbackRepository
 ) {
 
-    @PostMapping("create")
+    @PostMapping("")
     @PreAuthorize("hasAnyRole('ADMIN')")
     fun createCashback(@RequestBody payload: CashbackRequestPayload): CashbackResponse {
         val client = clientRepository.findById(payload.clientId).orElseThrow {
@@ -41,16 +42,22 @@ class CashbackAdminController(
             EntityNotFoundException("Магазин с названием ${payload.shopName} не найден!")
         }
 
-        val cashback = Cashback(0, client = client, shop = shop);
+        val cashback = Cashback(0, client = client, shop = shop, productName = payload.productName, productPrice = payload.productPrice, cashbackSum = payload.productPrice * 0.05);
         cashbackRepository.save(cashback)
         return CashbackResponse("Заявка на получение кэшбека для клиента " +
                 "${client.firstName} ${client.lastName} от магазина ${shop.name} была создана.", cashback.id)
     }
 
-    @PostMapping("process")
+    @GetMapping("")
+    @PreAuthorize("hasAnyRole('ADMIN')")
+    fun getCashback(): Iterable<CashbackData> {
+        return cashbackRepository.findAll().map{cashback: Cashback -> CashbackController.mapCashbackData(cashback)};
+    }
+
+    @PostMapping("/process")
     @PreAuthorize("hasAnyRole('ADMIN')")
     fun processCashback(): CashbackResponse {
-        cashbackService.processCashbacks();
+        cashbackService.processCashback();
         return CashbackResponse("Завершена обработка выплат кэшбека для покупок, совершенных более 60 дней назад")
     }
 }

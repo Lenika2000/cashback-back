@@ -4,8 +4,6 @@ import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 import ru.itmo.bllab1.model.*
 import ru.itmo.bllab1.repo.CashbackRepository
-import ru.itmo.bllab1.repo.ClientRepository
-import ru.itmo.bllab1.repo.ShopRepository
 import ru.itmo.bllab1.service.CashbackService
 import ru.itmo.bllab1.service.UserService
 import javax.persistence.EntityNotFoundException
@@ -15,31 +13,15 @@ import javax.persistence.EntityNotFoundException
 @RestController
 class CashbackController(
         private val cashbackRepository: CashbackRepository,
-        private val clientRepository: ClientRepository,
-        private val shopRepository: ShopRepository,
-        private val userService: UserService
+        private val userService: UserService,
+        private val cashbackService: CashbackService
 ) {
 
 
     companion object {
-        fun mapCashbackDataForShop (cashback: Cashback): CashbackDataForShop =
-                CashbackDataForShop(cashback.id, cashback.startDate, cashback.client.firstName, cashback.client.lastName,
-                cashback.isPaid, cashback.isOrderCompleted, cashback.confirmPayment, cashback.status, cashback.cashbackSum)
-        fun mapCashbackDataForClient (cashback: Cashback): CashbackDataForClient =
-                CashbackDataForClient(cashback.id, cashback.startDate, cashback.shop.name,
-                        cashback.status, cashback.cashbackSum)
         fun mapCashbackData(cashback: Cashback):  CashbackData =
-            CashbackData(cashback.id, cashback.startDate, cashback.client.firstName, cashback.client.lastName, cashback.shop.name,
-                    cashback.isPaid, cashback.isOrderCompleted, cashback.confirmPayment, cashback.status, cashback.cashbackSum)
-    }
-
-    @GetMapping("status/{cashbackId}")
-    @PreAuthorize("hasAnyRole('ADMIN','CLIENT','SHOP')")
-    fun getCashbackStatus(@PathVariable cashbackId: Long): CashbackStatus {
-        userService.checkShopOrCustomerAuthority(cashbackId);
-        return cashbackRepository.findById(cashbackId).orElseThrow {
-            EntityNotFoundException("Кэшбек с id $cashbackId не найден!")
-        }.status
+            CashbackData(cashback.id, cashback.creationDate, cashback.client.firstName, cashback.client.lastName, cashback.shop.name,
+                    cashback.productName, cashback.productPrice, cashback.isPaid, cashback.isOrderCompleted, cashback.confirmPayment, cashback.status, cashback.cashbackSum, cashback.shopPayment)
     }
 
     @GetMapping("{cashbackId}")
@@ -52,26 +34,11 @@ class CashbackController(
         return mapCashbackData(cashback);
     }
 
-    @GetMapping("findByClient/{clientId}")
-    @PreAuthorize("hasAnyRole('ADMIN','CLIENT')")
-    fun getClientCashbacks(@PathVariable clientId: Long): Iterable<CashbackDataForClient> {
-        userService.checkClientAuthority(clientId)
-        val client = clientRepository.findById(clientId).orElseThrow {
-            EntityNotFoundException("Клиент с id $clientId не найден!")
-        }
-        return cashbackRepository.findCashbackByClient(client)
-                .map { cashback: Cashback -> CashbackController.mapCashbackDataForClient(cashback) };
-    }
-
-    @GetMapping("findByShop/{shopId}")
+    @PutMapping("{cashbackId}")
     @PreAuthorize("hasAnyRole('ADMIN','SHOP')")
-    fun getShopCashbacks(@PathVariable shopId: Long): Iterable<CashbackDataForShop> {
-        userService.checkShopAuthority(shopId)
-        val shop = shopRepository.findById(shopId).orElseThrow {
-            EntityNotFoundException("Магазин с id $shopId не найден!")
-        }
-        return cashbackRepository.findCashbackByShop(shop)
-                .map { cashback: Cashback -> CashbackController.mapCashbackDataForShop(cashback) };
+    fun updateCashback(@PathVariable cashbackId: Long, @RequestBody payload: CashbackChangeRequestPayload): CashbackResponse {
+        userService.checkShopOrCustomerAuthority(cashbackId)
+        cashbackService.updateCashback(payload)
+        return CashbackResponse("Изменение информации о кэшбэке принято к обработке")
     }
-
 }

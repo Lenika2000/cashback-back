@@ -14,6 +14,7 @@ class Shop(
 data class ShopData(
         val id: Long,
         val name: String,
+        val login: String
 )
 
 data class RegisterShopRequest(

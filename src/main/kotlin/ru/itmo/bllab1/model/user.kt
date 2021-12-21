@@ -16,6 +16,7 @@ class EUser(
         var admin: Admin? = null,
         @ManyToMany(fetch = FetchType.EAGER)
         var roles: Set<Role> = emptySet(),
+        var registrationFromWebSite: Boolean = false
 )
 
 data class RegisterUserRequest(

@@ -20,5 +20,6 @@ data class ClientData(
         val id: Long,
         val firstName: String,
         val lastName: String,
+        val login: String,
         val balance: Number
 )

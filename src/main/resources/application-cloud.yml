@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:mysql://rc1a-pms5aadvb1qewexy.mdb.yandexcloud.net:3306/db1
-    username: user1
+    url: jdbc:postgresql://c-c9q7areu6cghj0sacco8.rw.mdb.yandexcloud.net:6432/cashback
+    username: lena
     password: 12345678
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop

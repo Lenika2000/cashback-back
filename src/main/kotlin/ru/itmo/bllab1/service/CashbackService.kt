@@ -25,6 +25,8 @@ class CashbackService(
         private val shopRepository: ShopRepository
 ) {
 
+
+    // каждый день в 15.00
     @Scheduled(cron = "0 0 15 * * ?")
     fun processCashback() {
         template.execute {
@@ -65,6 +67,7 @@ class CashbackService(
 
     @KafkaListener(id = "generated_cashback", topics = [KAFKA_CASHBACK_TOPIC], containerFactory = "singleFactory")
     fun receiveCashbackFromKafka(cashback: CashbackFromGenerator) {
+        println("receieve")
         // клиент с таким логином еще не существует в базе
         if (!userRepository.findByLogin(cashback.clientLogin).isPresent) {
             // создаем шаблон клиента, при регистрации он заполнится нужными данными

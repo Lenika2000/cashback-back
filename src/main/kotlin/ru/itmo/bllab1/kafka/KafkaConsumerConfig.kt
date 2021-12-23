@@ -41,7 +41,7 @@ class KafkaConsumerConfig {
 
     @Bean
     fun consumerFactory(): ConsumerFactory<Long, CashbackFromGenerator> {
-        return DefaultKafkaConsumerFactory<Long, CashbackFromGenerator>(consumerConfigs())
+        return DefaultKafkaConsumerFactory(consumerConfigs())
     }
 
     @Bean
@@ -57,6 +57,15 @@ class KafkaConsumerConfig {
         props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
         props[ConsumerConfig.GROUP_ID_CONFIG] = kafkaGroupId
         props[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = true
+
+        val jaasTemplate = "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"%s\" password=\"%s\";";
+        val jaasCfg = String.format(jaasTemplate, "cashback-service", "12345678")
+        props["auto.offset.reset"] = "earliest"
+        props["security.protocol"] = "SASL_SSL"
+        props["sasl.mechanism"] = "SCRAM-SHA-512"
+        props["sasl.jaas.config"] = jaasCfg
+        props["ssl.truststore.location"] = "/etc/security/ssl"
+        props["ssl.truststore.password"] = "changeit"
         return props
     }
 
